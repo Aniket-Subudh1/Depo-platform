@@ -4,11 +4,11 @@ import Redis from 'ioredis';
 
 // ✅ Redis Configuration for Valkey (Aiven)
 const redisConfig = {
-    host: '__',
+    host: '_____',
     port: 24291,
-    username: 'default', 
-    password: '___',
-    tls: {} 
+    username: 'default', // Required for Aiven
+    password: '____',
+    tls: {} // ✅ Must enable TLS for Aiven
 };
 
 // Create Redis Publisher & Subscriber

@@ -15,11 +15,11 @@ const LOG_TYPES = {
 };
 
 const redisConfig = {
-    host: '__',
+    host: '____',
     port: 24291,
-    username: 'default', 
-    password: '__',
-    tls: {} 
+    username: 'default', // Required for Aiven
+    password: '______',
+    tls: {} // ✅ Must enable TLS for Aiven
 };
 
 const publisher = new Redis(redisConfig);

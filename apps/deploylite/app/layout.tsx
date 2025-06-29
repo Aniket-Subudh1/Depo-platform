@@ -21,6 +21,15 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "DeployLite",
   description: "Your deployment platform",
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '120x120' },
+      { url: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' },
+    ],
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180' },
+    ],
+  },
 };
 
 export default function RootLayout({

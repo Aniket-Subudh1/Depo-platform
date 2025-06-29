@@ -5,11 +5,10 @@ import { Home, RefreshCw, AlertTriangle } from 'lucide-react'
 
 interface ErrorProps {
   statusCode?: number
-  hasGetInitialPropsRun?: boolean
   err?: Error
 }
 
-function ErrorPage({ statusCode, hasGetInitialPropsRun, err }: ErrorProps) {
+function ErrorPage({ statusCode, err }: ErrorProps) {
   const handleRefresh = () => {
     if (typeof window !== 'undefined') {
       window.location.reload()

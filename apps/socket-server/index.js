@@ -2,13 +2,13 @@ import { Server } from 'socket.io';
 import { createServer } from 'http';
 import Redis from 'ioredis';
 
-// ✅ Redis Configuration for Valkey (Aiven)
+
 const redisConfig = {
-    host: '_____',
+    host: '____________',
     port: 24291,
-    username: 'default', // Required for Aiven
-    password: '____',
-    tls: {} // ✅ Must enable TLS for Aiven
+    username: 'default',
+    password: '____________',
+    tls: {}
 };
 
 // Create Redis Publisher & Subscriber

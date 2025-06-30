@@ -2,12 +2,25 @@ import express from 'express';
 const router = express.Router();
 import Project from '../../models/Project.js';
 import Deployment from '../../models/Deployment.js';
+import Redis from 'ioredis';
+const redisConfig = {
+    host: '___________________',
+    port: 24291,
+    username: 'default',
+    password: '__________________',
+    tls: {}
+};
+
 router.get('/deploy', (req, res) => {
     res.send('API is working properly');
 })
 router.post('/deploy', async(req, res) => {
+    const client = new Redis(redisConfig);
     try{
      let project =await Project.findOneAndUpdate({name:req.body.name},{projectstatus:req.body.status});
+     if(project.url!=null && project.url!="" && project.url!=undefined){
+        await client.set(`${project.name}`, project.url);
+     }
      if(project==null){
         return res.status(400).json({message:"Project not found",success:false});
      }

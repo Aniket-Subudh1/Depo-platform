@@ -1,45 +1,101 @@
 const { exec } = require('child_process');
 const path = require('path');
+const Redis = require('ioredis');
+const axios = require('axios');
+const fs = require('fs');
 
-// Mocked Redis publisher
-const publishLog = (log) => {
-    console.log(log);
+// Redis configuration (Aiven)
+const redisConfig = {
+    host: '______________',
+    port: 24291,
+    username: 'default',
+    password: '______________',
+    tls: {}
 };
 
+const publisher = new Redis(redisConfig);
+
+// Environment variables
+const { projectid,techused,installcommand,buildcommand,env,runcommand } = process.env;
+
+if(techused !== "Next.js" && techused !== "Node.js") {
+    console.error("Invalid tech stack specified. Supported stacks are: Next.js, Node.js");
+    process.exit(1);
+}
+
+// Redis log publisher
+const publishLog = (message, type = 'info') => {
+    const log = {
+        timestamp: new Date().toISOString(),
+        message,
+        type,
+        projectId: projectid
+    };
+    publisher.publish(`logs:${projectid}`, JSON.stringify(log));
+    console.log(`[${type.toUpperCase()}] ${message}`);
+};
+
+// Status updater
+const updateDeploymentStatus = async (status) => {
+    try {
+        await axios.post("https://api.deploylite.tech/status/deploy", {
+            name: projectid,
+            status: status
+        }, {
+            headers: { "Content-Type": "application/json" }
+        });
+        publishLog(`Deployment status updated to: ${status}`, 'info');
+    } catch (err) {
+        publishLog(`Failed to update status: ${err.message}`, 'error');
+    }
+};
+
+// Run shell command
 const runCommand = (cmd) => {
     return new Promise((resolve, reject) => {
-        const p = exec(cmd);
+        const process = exec(cmd);
 
-        p.stdout.on('data', (data) => publishLog(data.toString()));
-        p.stderr.on('data', (data) => publishLog(`Error: ${data.toString()}`));
+        process.stdout.on('data', (data) => publishLog(data.toString().trim(), 'info'));
+        process.stderr.on('data', (data) => publishLog(data.toString().trim(), 'error'));
 
-        p.on('exit', (code) => {
+        process.on('exit', (code) => {
             if (code === 0) resolve();
             else reject(new Error(`Command failed with exit code ${code}`));
         });
     });
 };
 
+// Main runner
 const init = async () => {
-    console.log("Starting the build server");
-    publishLog("Build Started...");
+    publishLog("🚀 Starting Next.js SSR deployment");
 
-    const outDirPath = path.join(__dirname, 'output');
-    console.log(outDirPath);
+    const appPath = path.join(__dirname, 'output');
+    const envPath = path.join(appPath, '.env');
 
     try {
-        await runCommand(`cd ${outDirPath} && npm install && npm run build && npm run start -- --port 80`);
-    } catch (err) {
-        publishLog(`Error in initial command: ${err.message}`);
-        publishLog("Trying fallback command...");
+        publishLog("Writing .env file...", 'info');
 
-        try {
-            await runCommand(`cd ${outDirPath} && npm install -g serve && serve -s dist -l 80`);
-        } catch (fallbackErr) {
-            publishLog(`Fallback command failed: ${fallbackErr.message}`);
-            publishLog("Exiting the process...");
-            process.exit(1);
+        fs.writeFileSync(envPath, env || "");
+
+        publishLog("✅ .env file created successfully", 'success');
+
+        await runCommand(`cd ${appPath} && ${installcommand || "npm install"}`);
+        if (techused === "Next.js") {
+            await runCommand(`cd ${appPath} && ${buildcommand || 'npm run build'}`);
         }
+        if(techused === "Node.js" && buildcommand!=="") {
+            await runCommand(`cd ${appPath} && ${buildcommand || 'npm run build'}`);
+        }
+        await updateDeploymentStatus("live");
+        publishLog("✅ Deployment successful and server running fine", 'success');
+        await runCommand(`cd ${appPath} && npm run start -- --port 80`);
+        
+
+        
+    } catch (err) {
+        publishLog(`❌ Deployment failed: ${err.message}`, 'error');
+        await updateDeploymentStatus("failed");
+        process.exit(1);
     }
 };
 

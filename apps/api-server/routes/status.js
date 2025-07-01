@@ -4,10 +4,10 @@ import Project from '../../models/Project.js';
 import Deployment from '../../models/Deployment.js';
 import Redis from 'ioredis';
 const redisConfig = {
-    host: 'valkey-1dec9a5f-basirkhanaws-5861.c.aivencloud.com',
+    host: '_____',
     port: 24291,
     username: 'default',
-    password: 'AVNS__TnY6dEjpphUtR6tTl4',
+    password: '______',
     tls: {}
 };
 

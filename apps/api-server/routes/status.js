@@ -4,10 +4,10 @@ import Project from '../../models/Project.js';
 import Deployment from '../../models/Deployment.js';
 import Redis from 'ioredis';
 const redisConfig = {
-    host: '_____',
+    host: '',
     port: 24291,
     username: 'default',
-    password: '______',
+    password: '',
     tls: {}
 };
 

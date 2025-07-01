@@ -5,10 +5,10 @@ import Webbuilder from "../../../models/Webbuilder.js";
 import ioredis from "ioredis";
 const CreateWebbuilder = async (req, res) => {
     const redisConfig = {
-    host: '_____',
+    host: '',
     port: 24291,
     username: 'default',
-    password: '______',
+    password: '',
     tls: {}
 };
     const redisClient = new ioredis(redisConfig);

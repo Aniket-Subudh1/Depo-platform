@@ -4,10 +4,10 @@ import Redis from 'ioredis';
 
 
 const redisConfig = {
-    host: '____________',
+    host: '',
     port: 24291,
     username: 'default',
-    password: '____________',
+    password: '',
     tls: {}
 };
 

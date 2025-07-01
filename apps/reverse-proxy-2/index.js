@@ -5,10 +5,10 @@ const app = express();
 const port = 7000;
 //ADD ENV
 const redisConfig = {
-    host: '_______________',
+    host: '',
     port: 24291,
     username: 'default',
-    password: '________________',
+    password: '',
     tls: {}
 };
 const client = new Redis(redisConfig);

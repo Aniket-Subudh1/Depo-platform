@@ -6,10 +6,10 @@ const fs = require('fs');
 
 // Redis configuration (Aiven)
 const redisConfig = {
-    host: '______________',
+    host: '',
     port: 24291,
     username: 'default',
-    password: '______________',
+    password: '',
     tls: {}
 };
 

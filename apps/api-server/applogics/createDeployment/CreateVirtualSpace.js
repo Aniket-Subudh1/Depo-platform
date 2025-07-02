@@ -1,9 +1,7 @@
-import Deployment from "../../../models/Deployment.js"
-import Project from "../../../models/Project.js";
-import WebBuilder from "../../../models/WebBuilder.js";
+import VirtualSpace from "../../../models/VirtualSpace.js";
 import ioredis from "ioredis";
 
-const CreateWebbuilder = async (req, res) => {
+const CreateVirtualSpace  = async (req, res) => {
     const redisConfig = {
         host: '',
         port: 24291,
@@ -22,10 +20,8 @@ const CreateWebbuilder = async (req, res) => {
     const {
         projectid,
         userid,
+        passwd,
         name: projectname,
-        dbname,
-        dbuser,
-        dbpass,
     } = req.body;
     
     try {
@@ -33,7 +29,7 @@ const CreateWebbuilder = async (req, res) => {
         console.log("Database config:", { dbname, dbuser, dbpass: "***" });
         
         // Update webbuilder project status
-        let updateproject = await WebBuilder.findOneAndUpdate(
+        let updateproject = await VirtualSpace.findOneAndUpdate(
             { _id: projectid }, 
             { 
                 projecturl: `${projectname}.host.deploylite.tech`, 
@@ -45,17 +41,17 @@ const CreateWebbuilder = async (req, res) => {
         );
         
         if (!updateproject) {
-            console.error("WebBuilder project not found:", projectid);
+            console.error("Virtual space project not found:", projectid);
             return res.status(404).json({
                 success: false,
-                message: "WebBuilder project not found"
+                message: "Virtual space project not found"
             });
         }
         
         console.log("Updated project:", updateproject.name);
         
         // Call deployment API for webbuilder (WordPress container)
-        const result = await fetch(`${process.env.DEPLOYMENT_API}/deploy/webbuilder`, {
+        const result = await fetch(`${process.env.DEPLOYMENT_API}/deploy/virtualspace`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -63,17 +59,15 @@ const CreateWebbuilder = async (req, res) => {
             },
             body: JSON.stringify({
                 projectid: projectname,
-                dbname: dbname,
-                dbuser: dbuser,
-                dbpass: dbpass,
+                passwd:passwd,
             }),
         });
         
         let data = await result.json();
-        console.log("Webbuilder deployment response:", data);
+        console.log("Virtual space deployment response:", data);
         
         if (data.success) {
-            console.log("Checking IP for webbuilder deployment");
+            console.log("Checking IP for virtual space deployment");
             console.log("Task ARN:", data.data.tasks[0].taskArn);
             
             // Check IP and update in the DB 
@@ -102,7 +96,7 @@ const CreateWebbuilder = async (req, res) => {
 
             if (data2.success) {
                 // Update the webbuilder project with the URL and ARN
-                let updateproject = await WebBuilder.findOneAndUpdate(
+                let updateproject = await VirtualSpace.findOneAndUpdate(
                     { _id: projectid }, 
                     { 
                         url: data2.url,
@@ -114,10 +108,10 @@ const CreateWebbuilder = async (req, res) => {
                 // Set Redis cache for the project URL
                 await redisClient.set(`${projectname}`, data2.url);
                 
-                console.log("WebBuilder deployment completed successfully");
+                console.log("Virtual Space deployment completed successfully");
                 return res.status(201).json({
                     success: true,
-                    message: "WebBuilder Deployment Started Successfully",
+                    message: "Virtual Space Deployment Started Successfully",
                     data: {
                         projectUrl: `https://${projectname}.host.deploylite.tech`,
                         publicIp: data2.url,
@@ -129,38 +123,38 @@ const CreateWebbuilder = async (req, res) => {
                 console.log(data2);
                 
                 // Update project status to failed
-                await WebBuilder.findOneAndUpdate(
+                await VirtualSpace.findOneAndUpdate(
                     { _id: projectid }, 
                     { projectstatus: "failed" }
                 );
                 
                 return res.status(400).json({
                     success: false,
-                    message: "Error occurred during webbuilder deployment phase 2 (IP assignment)"
+                    message: "Error occurred during virtual space deployment phase 2 (IP assignment)"
                 });
             }
         } else {
-            console.log("Error in webbuilder deployment");
+            console.log("Error in virtual space deployment");
             console.log(data);
             
             // Update project status to failed
-            await WebBuilder.findOneAndUpdate(
+            await VirtualSpace.findOneAndUpdate(
                 { _id: projectid }, 
                 { projectstatus: "failed" }
             );
             
             return res.status(400).json({
                 success: false,
-                message: "Error occurred during webbuilder deployment"
+                message: "Error occurred during virtual space deployment"
             });
         }
         
     } catch (err) {
-        console.log("Error in webbuilder deployment:", err);
+        console.log("Error in virtual space deployment:", err);
         
         // Update project status to failed
         try {
-            await WebBuilder.findOneAndUpdate(
+            await VirtualSpace.findOneAndUpdate(
                 { _id: projectid }, 
                 { projectstatus: "failed" }
             );
@@ -169,11 +163,11 @@ const CreateWebbuilder = async (req, res) => {
         }
         
         return res.status(500).json({
-            message: "Error in creating webbuilder deployment",
+            message: "Error in creating virtual space deployment",
             success: false,
             error: err.message
         });
     }
 };
 
-export default CreateWebbuilder;
+export default CreateVirtualSpace 

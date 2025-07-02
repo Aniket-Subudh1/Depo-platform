@@ -1,7 +1,9 @@
+
 import mongoose from "mongoose";
 import { Schema } from "mongoose";
 
-const WebBuilderSchema = Schema({
+const VirtualSpaceSchema = Schema({
+
 userid:{ type: Schema.Types.ObjectId,ref:'User', required: true},
 name:{type:String,required:true, unique: true},
 startdate:{type:Date,required:true},
@@ -17,17 +19,9 @@ endbilingdate:{type:Date},
 billstatus:{type:String, default: "pending"},
 customdomain:{type:String},
 arn:{type:String,default:""},
-webbuilder:{type:String,default:"WordPress"}, 
 projecturl:{type:String,default:""},
 
-dbname:{type:String,required:true},
-dbuser:{type:String,required:true}, 
-dbpass:{type:String,required:true},
 },{timestamps:true})
 
-WebBuilderSchema.index({ userid: 1 });
-WebBuilderSchema.index({ name: 1 }, { unique: true });
-WebBuilderSchema.index({ projectstatus: 1 });
-
 mongoose.models = {}
-export default mongoose.model.WebBuilder||mongoose.model('WebBuilder',WebBuilderSchema);
+export default mongoose.model.VirtualSpace||mongoose.model('VirtualSpace',VirtualSpaceSchema);

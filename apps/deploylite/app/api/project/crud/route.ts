@@ -9,7 +9,7 @@ import Deployment from "../../../../../models/Deployment"
 import { cookies } from "next/headers"
 import CryptoJS from "crypto-js"
 import VirtualSpace from "../../../../../models/VirtualSpace"
-import Webbuilder from "../../../../../models/WebBuilder"
+import WebBuilder from "../../../../../models/WebBuilder"
 export const GET = async () => {
     try {
         await ConnectDb();
@@ -88,7 +88,7 @@ export const POST = async (req: NextRequest) => {
         console.log(name);
         
         const projectname = await Project.findOne({ name: name });
-        const webbuilder = await Webbuilder.findOne({ name: name });
+        const webbuilder = await WebBuilder.findOne({ name: name });
         const virtualspace = await VirtualSpace.findOne({ name: name });
         
         // If project name already exists

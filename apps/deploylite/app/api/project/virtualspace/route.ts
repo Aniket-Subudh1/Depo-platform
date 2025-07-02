@@ -2,14 +2,13 @@ import { NextResponse, NextRequest } from "next/server"
 import ConnectDb from "../../../../../middleware/connectdb"
 import CheckAuth from "@/actions/CheckAuth"
 import Project from "../../../../../models/Project"
-import { CreateprojectSchema } from "@/zod/project/CreateprojectZod"
+import WebBuilder from "../../../../../models/WebBuilder"
+import VirtualSpace from "../../../../../models/VirtualSpace"
 import PricingPlan from "../../../../../models/PricingPlan"
 import User from "../../../../../models/User"
-import Deployment from "../../../../../models/Deployment"
 import { cookies } from "next/headers"
-import CryptoJS from "crypto-js"
-import VirtualSpace from "../../../../../models/VirtualSpace"
-import Webbuilder from "../../../../../models/WebBuilder"
+
+
 export const GET = async () => {
     try {
         await ConnectDb();
@@ -31,7 +30,7 @@ export const GET = async () => {
             }, { status: 404 });
         }
         
-        const projectdata = await Project.find({ userid: user._id }).populate("userid");
+        const projectdata = await VirtualSpace.find({ userid: user._id }).populate("userid");
         
         if (!projectdata || projectdata.length === 0) {
             return NextResponse.json({
@@ -48,7 +47,7 @@ export const GET = async () => {
         });
         
     } catch (err) {
-        console.error("Error in GET /api/project/crud:", err);
+        console.error("Error in GET /api/project/virtualspace:", err);
         return NextResponse.json({
             success: false,
             message: "Something went wrong please try again later!"
@@ -64,6 +63,8 @@ export const POST = async (req: NextRequest) => {
         const data = await req.json();
         const auth = await CheckAuth();
         
+        console.log("Received data:", data); 
+        
         if (!auth.result) {
             return NextResponse.json({
                 message: "User is not authenticated",
@@ -71,27 +72,33 @@ export const POST = async (req: NextRequest) => {
                 autherror: true
             }, { status: 401 });
         }
-        
-        const sanitizePayload = CreateprojectSchema.safeParse(data);
-        
-        console.log(data);
-        if (!sanitizePayload.success) {
+
+        // Validate required fields
+        if (!data.name) {
             return NextResponse.json({
-                message: "Invalid Payload tampering detected",
+                message: "Project name is required",
                 success: false,
-                error: sanitizePayload.error,
+            }, { status: 400 });
+        }
+
+     
+
+        if (!data.planid) {
+            return NextResponse.json({
+                message: "Plan ID is required",
+                success: false,
             }, { status: 400 });
         }
         
-        // Check project is unique or not
+     
         const name = data.name.replace(/\s+/g, '').toLowerCase();
-        console.log(name);
+        console.log("Processed name:", name);
         
         const projectname = await Project.findOne({ name: name });
-        const webbuilder = await Webbuilder.findOne({ name: name });
-        const virtualspace = await VirtualSpace.findOne({ name: name });
+        const webbuildername = await WebBuilder.findOne({ name: name });
+        const virtualspacename = await VirtualSpace.findOne({ name: name });
         
-        // If project name already exists
+       
         if (projectname != null) {
             return NextResponse.json({
                 message: "Project name already exists. Select a different name",
@@ -99,17 +106,16 @@ export const POST = async (req: NextRequest) => {
                 projectname: "exists"
             }, { status: 409 });
         }
-        // If webbuilder name already exists
-        if (webbuilder != null) {
+
+        if (webbuildername != null) {
             return NextResponse.json({
-                message: "WebBuilder name already exists. Select a different name",
+                message: "Web Builder name already exists. Select a different name",
                 success: false,
                 webbuildername: "exists"
             }, { status: 409 });
         }
-
-        //check in virtual space
-        if (virtualspace != null) {
+        //check for virtual space name
+        if (virtualspacename != null) {
             return NextResponse.json({
                 message: "Virtual Space name already exists. Select a different name",
                 success: false,
@@ -117,7 +123,7 @@ export const POST = async (req: NextRequest) => {
             }, { status: 409 });
         }
         
-        console.log(data.planid);
+        console.log("Checking plan:", data.planid);
         const checkplan = await PricingPlan.findOne({ _id: data.planid });
         
         if (checkplan == null) {
@@ -130,7 +136,7 @@ export const POST = async (req: NextRequest) => {
         
         console.log("checking user");
         const user = await User.findOne({ email: auth.email });
-        console.log(user);
+        console.log("User found:", user ? "Yes" : "No");
         
         if (user == null) {
             return NextResponse.json({
@@ -140,7 +146,7 @@ export const POST = async (req: NextRequest) => {
             }, { status: 404 });
         }
 
-        console.log("creating project");
+        console.log("creating webbuilder project");
         
         const startbilingdate = new Date(); 
         const endbilingdate = new Date(startbilingdate); 
@@ -151,17 +157,9 @@ export const POST = async (req: NextRequest) => {
         console.log('Start Billing Date (Today, local time):', startbilingdate.toLocaleString());
         console.log('End Billing Date (Next day, 12:00 AM local time):', endbilingdate.toLocaleString());
         
-        const project = new Project({
+       
+        const project = new VirtualSpace({
             name: name,
-            type: data.type,
-            repourl: data.repourl,
-            repobranch: data.repobranch,
-            techused: data.techused,
-            buildcommand: data.buildcommand,
-            startcommand: data.startcommand,
-            rootfolder: data.rootfolder,
-            outputfolder: data.outputfolder,
-            installcommand: data.installcommand,
             planid: data.planid,
             userid: user._id,
             startdate: new Date(),
@@ -171,27 +169,14 @@ export const POST = async (req: NextRequest) => {
             endbilingdate: endbilingdate,
         });
         
+        console.log("Project object before save:", project);
+        
         await project.save();
         
-        const deploymentData = new Deployment({
-            userid: user._id,
-            projectid: project._id,
-            status: "creating",
-            deploymentdate: new Date(),
-        });
+        console.log("Project saved successfully:", project._id);
         
-        await deploymentData.save();
-        
-        if (!user.githubtoken) {
-            return NextResponse.json({
-                message: "GitHub token not found. Please connect your GitHub account.",
-                success: false,
-            }, { status: 400 });
-        }
-        
-        const decryptgithubauth = CryptoJS.AES.decrypt(user.githubtoken, process.env.SECRET_KEY || "").toString(CryptoJS.enc.Utf8);
-        
-        const createdep = await fetch(`${process.env.DEPLOYMENT_API}/createdeployment`, {
+        // Call deployment API
+        const createdep = await fetch(`${process.env.DEPLOYMENT_API}/createdeployment/virtualspace`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -200,22 +185,13 @@ export const POST = async (req: NextRequest) => {
             body: JSON.stringify({
                 projectid: project._id,
                 userid: user._id,
-                repourl: data.repourl,
-                repobranch: data.repobranch,
-                techused: data.techused,
-                buildcommand: data.buildcommand,
-                startcommand: data.startcommand,
-                rootfolder: data.rootfolder,
-                outputfolder: data.outputfolder,
-                installcommand: data.installcommand,
                 name: name,
-                authtoken: decryptgithubauth,
-                env: data.env || "",
+                passwd: data.password || "",
             })
         });
         
         const result = await createdep.json();
-        console.log(result);
+        console.log("Deployment API response:", result);
         
         if (result.success) {
             return NextResponse.json({
@@ -241,6 +217,7 @@ export const POST = async (req: NextRequest) => {
     }
 }
 
+
 export const DELETE = async (req: NextRequest) => {
     try {
          const getcookie = await cookies();
@@ -257,30 +234,27 @@ export const DELETE = async (req: NextRequest) => {
             }, { status: 401 });
         }
         
-        const projectdelete = await Project.findOneAndDelete({ _id: data.id });
+        const projectdelete = await VirtualSpace.findOneAndDelete({ _id: data.id });
         console.log("Project to delete:", projectdelete);
-        if(projectdelete !== null && projectdelete.arn !== null || projectdelete.arn !== undefined|| projectdelete.arn !== ""){ {
-            console.log("inside ")
-        console.log("Project not found or ARN is missing",projectdelete.arn);
-         const createdep = await fetch(`${process.env.DEPLOYMENT_API}/deploy/delete`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': getcookie.get("token")?.value || '',
-            },
-            body: JSON.stringify({
-              task:projectdelete.arn
-            })
-        });
-    
         
-        const result = await createdep.json();
-        console.log(result);
-          return NextResponse.json({
-            success: true,
-            message: "Project Deleted Successfully"
-        });
-    }
+        if(projectdelete !== null && (projectdelete.arn !== null && projectdelete.arn !== undefined && projectdelete.arn !== "")) {
+            console.log("Stopping ECS task with ARN:", projectdelete.arn);
+            
+            const createdep = await fetch(`${process.env.DEPLOYMENT_API}/deploy/delete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': getcookie.get("token")?.value || '',
+                },
+                body: JSON.stringify({
+                  task: projectdelete.arn
+                })
+            });
+        
+            const result = await createdep.json();
+            console.log("Delete task result:", result);
+        }
+        
         if (projectdelete == null) {
             return NextResponse.json({
                 success: false,
@@ -290,9 +264,8 @@ export const DELETE = async (req: NextRequest) => {
         
         return NextResponse.json({
             success: true,
-            message: "Project Deleted Successfully"
+            message: "Virtual Space Deleted Successfully"
         });
-    }
         
     } catch (err) {
         console.error("Error deleting project:", err);

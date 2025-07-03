@@ -1,12 +1,13 @@
-import VirtualSpace from "../../../models/VirtualSpace.js";
+import ChatbotBuilder from "../../../models/ChatbotBuilder.js";
+import WebBuilder from "../../../models/WebBuilder.js";
 import ioredis from "ioredis";
 
-const CreateVirtualSpace = async (req, res) => {
+const Createchatbot = async (req, res) => {
     const redisConfig = {
-        host: '__',
+        host: '',
         port: 24291,
         username: 'default',
-        password: '___',
+        password: '',
         tls: {}
     };
     const redisClient = new ioredis(redisConfig);
@@ -14,21 +15,21 @@ const CreateVirtualSpace = async (req, res) => {
     // analyze all the deployments strategies here and call the respective deployment strategy
     // creating a webhook
     console.log(req.body);
-    console.log("hitting the server for virtual space deployment creation");
+    console.log("hitting the server for webbuilder deployment creation");
     let token = req.headers.authorization;
     
     const {
         projectid,
         userid,
-        passwd,
         name: projectname,
+        env,
     } = req.body;
     
     try {
-        console.log("Creating virtual space deployment for:", projectname);
-        console.log("Virtual space config:", { projectname, passwd: "***" });
+       
         
-        let updateproject = await VirtualSpace.findOneAndUpdate(
+        // Update webbuilder project status
+        let updateproject = await ChatbotBuilder.findOneAndUpdate(
             { _id: projectid }, 
             { 
                 projecturl: `${projectname}.host.deploylite.tech`, 
@@ -40,17 +41,17 @@ const CreateVirtualSpace = async (req, res) => {
         );
         
         if (!updateproject) {
-            console.error("Virtual space project not found:", projectid);
+            console.error("chatbot project not found:", projectid);
             return res.status(404).json({
                 success: false,
-                message: "Virtual space project not found"
+                message: "WebBuilder project not found"
             });
         }
         
         console.log("Updated project:", updateproject.name);
         
-        // Call deployment API for virtual space (containerized development environment)
-        const result = await fetch(`${process.env.DEPLOYMENT_API}/deploy/virtualspace`, {
+        // Call deployment API for webbuilder (WordPress container)
+        const result = await fetch(`${process.env.DEPLOYMENT_API}/deploy/chatbot`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -58,15 +59,15 @@ const CreateVirtualSpace = async (req, res) => {
             },
             body: JSON.stringify({
                 projectid: projectname,
-                passwd: passwd,
+                env: env,
             }),
         });
         
         let data = await result.json();
-        console.log("Virtual space deployment response:", data);
+        console.log("Webbuilder deployment response:", data);
         
         if (data.success) {
-            console.log("Checking IP for virtual space deployment");
+            console.log("Checking IP for webbuilder deployment");
             console.log("Task ARN:", data.data.tasks[0].taskArn);
             
             // Check IP and update in the DB 
@@ -94,8 +95,8 @@ const CreateVirtualSpace = async (req, res) => {
             console.log("IP check response:", data2);
 
             if (data2.success) {
-                // Update the virtual space project with the URL and ARN
-                let updateproject = await VirtualSpace.findOneAndUpdate(
+                // Update the webbuilder project with the URL and ARN
+                let updateproject = await ChatbotBuilder.findOneAndUpdate(
                     { _id: projectid }, 
                     { 
                         url: data2.url,
@@ -107,10 +108,10 @@ const CreateVirtualSpace = async (req, res) => {
                 // Set Redis cache for the project URL
                 await redisClient.set(`${projectname}`, data2.url);
                 
-                console.log("Virtual Space deployment completed successfully");
+                console.log("CHATBOT deployment completed successfully");
                 return res.status(201).json({
                     success: true,
-                    message: "Virtual Space Deployment Started Successfully",
+                    message: "CHATBOT Deployment Started Successfully",
                     data: {
                         projectUrl: `https://${projectname}.host.deploylite.tech`,
                         publicIp: data2.url,
@@ -118,42 +119,42 @@ const CreateVirtualSpace = async (req, res) => {
                     }
                 });
             } else {
-                console.log("Error in getting IP for virtual space");
+                console.log("Error in getting IP for webbuilder");
                 console.log(data2);
                 
                 // Update project status to failed
-                await VirtualSpace.findOneAndUpdate(
+                await ChatbotBuilder.findOneAndUpdate(
                     { _id: projectid }, 
                     { projectstatus: "failed" }
                 );
                 
                 return res.status(400).json({
                     success: false,
-                    message: "Error occurred during virtual space deployment phase 2 (IP assignment)"
+                    message: "Error occurred during webbuilder deployment phase 2 (IP assignment)"
                 });
             }
         } else {
-            console.log("Error in virtual space deployment");
+            console.log("Error in webbuilder deployment");
             console.log(data);
             
             // Update project status to failed
-            await VirtualSpace.findOneAndUpdate(
+            await ChatbotBuilder.findOneAndUpdate(
                 { _id: projectid }, 
                 { projectstatus: "failed" }
             );
             
             return res.status(400).json({
                 success: false,
-                message: "Error occurred during virtual space deployment"
+                message: "Error occurred during webbuilder deployment"
             });
         }
         
     } catch (err) {
-        console.log("Error in virtual space deployment:", err);
+        console.log("Error in webbuilder deployment:", err);
         
         // Update project status to failed
         try {
-            await VirtualSpace.findOneAndUpdate(
+            await ChatbotBuilder.findOneAndUpdate(
                 { _id: projectid }, 
                 { projectstatus: "failed" }
             );
@@ -162,11 +163,11 @@ const CreateVirtualSpace = async (req, res) => {
         }
         
         return res.status(500).json({
-            message: "Error in creating virtual space deployment",
+            message: "Error in creating webbuilder deployment",
             success: false,
             error: err.message
         });
     }
 };
 
-export default CreateVirtualSpace;
+export default Createchatbot;

@@ -6,22 +6,18 @@ const fs = require('fs');
 
 // Redis configuration (Aiven)
 const redisConfig = {
-    host: '',
+    host: 'valkey-1dec9a5f-basirkhanaws-5861.c.aivencloud.com',
     port: 24291,
     username: 'default',
-    password: '',
+    password: 'AVNS__TnY6dEjpphUtR6tTl4',
     tls: {}
 };
 
 const publisher = new Redis(redisConfig);
 
 // Environment variables
-const { projectid,techused,installcommand,buildcommand,env,runcommand } = process.env;
+const { projectid,env } = process.env;
 
-if(techused !== "Next.js" && techused !== "Node.js") {
-    console.error("Invalid tech stack specified. Supported stacks are: Next.js, Node.js");
-    process.exit(1);
-}
 
 // Redis log publisher
 const publishLog = (message, type = 'info') => {
@@ -33,21 +29,6 @@ const publishLog = (message, type = 'info') => {
     };
     publisher.publish(`logs:${projectid}`, JSON.stringify(log));
     console.log(`[${type.toUpperCase()}] ${message}`);
-};
-
-// Status updater
-const updateDeploymentStatus = async (status) => {
-    try {
-        await axios.post("https://api.deploylite.tech/status/deploy", {
-            name: projectid,
-            status: status
-        }, {
-            headers: { "Content-Type": "application/json" }
-        });
-        publishLog(`Deployment status updated to: ${status}`, 'info');
-    } catch (err) {
-        publishLog(`Failed to update status: ${err.message}`, 'error');
-    }
 };
 
 // Run shell command
@@ -67,7 +48,7 @@ const runCommand = (cmd) => {
 
 // Main runner
 const init = async () => {
-    publishLog("🚀 Starting Next.js SSR deployment");
+    publishLog("🚀 Starting chatbot deployment");
 
     const appPath = path.join(__dirname, 'output');
     const envPath = path.join(appPath, '.env');
@@ -79,22 +60,16 @@ const init = async () => {
 
         publishLog("✅ .env file created successfully", 'success');
 
-        await runCommand(`cd ${appPath} && ${installcommand || "npm install"}`);
-        if (techused === "Next.js") {
-            await runCommand(`cd ${appPath} && ${buildcommand || 'npm run build'}`);
-        }
-        if(techused === "Node.js" && buildcommand!=="") {
-            await runCommand(`cd ${appPath} && ${buildcommand || 'npm run build'}`);
-        }
-        await updateDeploymentStatus("live");
+        await runCommand(`cd ${appPath} && npm install`);
+      
+    
         publishLog("✅ Deployment successful and server running fine", 'success');
-        await runCommand(`cd ${appPath} && npm run start -- --port 80`);
+        await runCommand(`cd ${appPath} && node src/index.js`);
         
 
         
     } catch (err) {
         publishLog(`❌ Deployment failed: ${err.message}`, 'error');
-        await updateDeploymentStatus("failed");
         process.exit(1);
     }
 };

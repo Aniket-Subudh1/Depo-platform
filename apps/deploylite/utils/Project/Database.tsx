@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -78,6 +79,7 @@ interface DatabaseProject {
   cpuusage?: string;
   memoryusage?: string;
   storageusage?: string;
+  arn?: string;
 }
 
 // Animation variants
@@ -228,7 +230,7 @@ export default function DatabaseComp() {
     }
     
     try {
-      const confirm = window.confirm('Are you sure you want to delete this database?');
+      const confirm = window.confirm('Are you sure you want to delete this database? This action cannot be undone.');
       if (!confirm) {
         return;
       }
@@ -246,7 +248,7 @@ export default function DatabaseComp() {
       
       if (result.success) {
         toast.success(result.message);
-        getDatabaseProjects();
+        getDatabaseProjects(); // Refresh the list
       } else {
         toast.error(result.message);
       }
@@ -258,6 +260,7 @@ export default function DatabaseComp() {
   };
 
   const handleViewDatabase = (database: DatabaseProject) => {
+    console.log('Navigating to database overview:', database._id);
     router.push(`/project/overview?id=${database._id}&type=database`);
   };
 
@@ -294,17 +297,15 @@ export default function DatabaseComp() {
   const getDatabaseIcon = (type: string) => {
     switch (type?.toLowerCase()) {
       case 'mysql':
-        return '🐬';
-      case 'postgresql':
-        return '🐘';
+        return '/sql.svg';
       case 'mongodb':
-        return '🍃';
+        return '/MongoDB.svg';
       case 'redis':
-        return '⚡';
+        return '/redis.svg';
       case 'qdrant':
-        return '🧠';
+        return '/qdrant.svg';
       default:
-        return '🗄️';
+        return '/MongoDB.svg';
     }
   };
 
@@ -321,6 +322,11 @@ export default function DatabaseComp() {
 
   // Get unique database types for filter
   const databaseTypes = Array.from(new Set(databases.map(db => db.dbtype).filter(Boolean)));
+
+  const copyToClipboard = (text: string, type: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${type} copied to clipboard`);
+  };
 
   if (!user?.connectgithub) {
     return <Connect />;
@@ -436,6 +442,7 @@ export default function DatabaseComp() {
                         <option value="all">All Status</option>
                         <option value="live">Live</option>
                         <option value="creating">Creating</option>
+                        <option value="building">Building</option>
                         <option value="failed">Failed</option>
                       </select>
 
@@ -535,7 +542,12 @@ export default function DatabaseComp() {
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center space-x-3">
                                       <div className="p-2 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-lg text-xl">
-                                        {getDatabaseIcon(database.dbtype)}
+                                        <Image
+                                         src={getDatabaseIcon(database.dbtype)}
+                                         width={50}
+                                         height={50}
+                                         alt="logo"
+                                         />
                                       </div>
                                       <div>
                                         <CardTitle className="text-lg font-semibold text-gray-200 group-hover:text-purple-300 transition-colors line-clamp-1">
@@ -578,6 +590,16 @@ export default function DatabaseComp() {
                                           View Details
                                         </DropdownMenuItem>
                                         <DropdownMenuItem 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            copyToClipboard(database.projecturl || '', 'Connection URL');
+                                          }}
+                                          className="hover:bg-purple-500/10 hover:text-purple-300"
+                                        >
+                                          <Copy className="mr-2 h-4 w-4" />
+                                          Copy URL
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem 
                                           onClick={(e) => e.stopPropagation()}
                                           className="hover:bg-purple-500/10 hover:text-purple-300"
                                         >
@@ -591,6 +613,18 @@ export default function DatabaseComp() {
                                           <BarChart2 className="mr-2 h-4 w-4" />
                                           Monitoring
                                         </DropdownMenuItem>
+                                        {database.uiurl && (
+                                          <DropdownMenuItem 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              window.open(database.uiurl, '_blank');
+                                            }}
+                                            className="hover:bg-purple-500/10 hover:text-purple-300"
+                                          >
+                                            <Monitor className="mr-2 h-4 w-4" />
+                                            Admin UI
+                                          </DropdownMenuItem>
+                                        )}
                                         <DropdownMenuItem 
                                           onClick={(e) => e.stopPropagation()}
                                           className="hover:bg-purple-500/10 hover:text-purple-300"
@@ -620,8 +654,7 @@ export default function DatabaseComp() {
                                       className="flex items-center text-sm mb-4 text-gray-400 hover:text-purple-400 transition-colors cursor-pointer"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        navigator.clipboard.writeText(database.projecturl || '');
-                                        toast.success('Connection URL copied to clipboard');
+                                        copyToClipboard(database.projecturl || '', 'Connection URL');
                                       }}
                                     >
                                       <Copy className="mr-2 h-3 w-3" />
@@ -691,7 +724,7 @@ export default function DatabaseComp() {
                         ))}
                       </motion.div>
                     ) : (
-                      // List view implementation would go here
+                      // List view implementation
                       <div className="space-y-4">
                         {filteredDatabases.map((database) => (
                           <Card 
@@ -702,7 +735,13 @@ export default function DatabaseComp() {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-4">
                                 <div className="p-3 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-xl text-2xl">
-                                  {getDatabaseIcon(database.dbtype)}
+                                  <Image 
+                                  src={getDatabaseIcon(database.dbtype)}
+                                  width={20}
+                                  height={20}
+                                  alt="logo"
+                                  />
+
                                 </div>
                                 <div>
                                   <h3 className="text-lg font-semibold text-gray-200">{database.dbname}</h3>

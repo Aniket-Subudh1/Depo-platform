@@ -15,6 +15,7 @@ const page = async ({ params }: PageProps) => {
   
   return (
     <div>
+      
       {type === "app-platform" && <CreateProject name={type}/>}
       {type === "webbuilder" && <CreateWebbuilder />}
       {type === "virtualspace" && <CreateVirtualSpace />}
